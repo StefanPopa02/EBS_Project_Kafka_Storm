@@ -1,22 +1,26 @@
-package KafkaUtils;
+package KafkaPubSub;
 
+import Model.Publication;
+import com.google.gson.Gson;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 
-public class KafkaProducerSample {
-    public static void main(String[] args) throws Exception{
+public class KafkaPublisher {
+    public static void main(String[] args) {
 
         // Check arguments length value
-        if(args.length == 0){
-            System.out.println("Enter topic name");
+        if (args.length == 0) {
+            System.out.println("Enter broker's topic name");
             return;
         }
 
         //Assign topicName to string variable
-        String topicName = args[0].toString();
+        String topicName = args[0];
 
         // create instance for properties to access producer configs
         Properties props = new Properties();
@@ -47,23 +51,25 @@ public class KafkaProducerSample {
 
         Producer<String, String> producer = new KafkaProducer<>(props);
 
-        String[] strings = new String[10];
-        strings[0] = "hi";
-        strings[1] = "kafka test";
-        strings[2] = "storm check";
-        strings[3] = "spark job";
-        strings[4] = "message";
-        strings[5] = "operator";
-        strings[6] = "modulo";
-        strings[7] = "remainder";
-        strings[8] = "backtype";
-        strings[9] = "utility";
-        for(int i = 0; i < 10; i++)
-        {
+        List<Publication> publications = new ArrayList<>();
+        Publication publication1 = new Publication();
+        publication1.addPublicationField("COMPANY", "GOOGLE");
+        publication1.addPublicationField("VALUE", "10");
+
+        Publication publication2 = new Publication();
+        publication2.addPublicationField("COMPANY", "APPLE");
+        publication2.addPublicationField("VALUE", "7");
+
+        publications.add(publication1);
+        publications.add(publication2);
+
+        Gson gson = new Gson();
+        for (Publication tmpPublication : publications) {
+            String publicationJson = gson.toJson(tmpPublication);
             producer.send(new ProducerRecord<>(topicName,
-                    "words", strings[i]));
+                    "pub-topic", publicationJson));
+            System.out.println("Publication sent successfully: " + publicationJson);
         }
-        System.out.println("Message sent successfully");
         producer.close();
     }
 }
