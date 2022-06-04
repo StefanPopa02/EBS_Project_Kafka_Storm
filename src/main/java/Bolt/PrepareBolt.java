@@ -33,32 +33,15 @@ public class PrepareBolt extends BaseRichBolt {
 
     @Override
     public void execute(Tuple tuple) {
-        String sourceTopic = tuple.getStringByField("key");
-        if (sourceTopic == null) {
+        String responseTopic = tuple.getStringByField("key");
+        if (responseTopic == null) {
             return;
         }
-        String value = tuple.getStringByField("value");
+        String payload = tuple.getStringByField("value");
         String currentTopic = tuple.getStringByField("topic");
-        if (sourceTopic.startsWith("sub")) {
-            Subscription subscription = gson.fromJson(value, Subscription.class);
-            System.out.println("SUBSCRIPTION RECEIVED key: " + sourceTopic + " value: " + subscription);
-            //Add (subscriber/broker, message) to routing table
-            List<Subscription> existingSubs = routingTable.get(sourceTopic);
-            if (existingSubs == null) {
-                existingSubs = new ArrayList<>();
-            }
-            existingSubs.add(subscription);
-            // Foreach neighbor broker emit tuple with the (key, message)
-            // key = source = current broker
-            List<String> neighborsBrokers = neighborsTopicList.get(currentTopic);
-            for (String neighborBrokerTopic : neighborsBrokers) {
-                if(!sourceTopic.equals(neighborBrokerTopic)){
-                    this.outputCollector.emit(new Values(neighborBrokerTopic, currentTopic, value));
-                }
-            }
-        } else if (sourceTopic.startsWith("pub")) {
-            Publication publication = gson.fromJson(value, Publication.class);
-            System.out.println("PUBLICATION RECEIVED: " + sourceTopic + " value: " + publication);
+        if (responseTopic.startsWith("pub")) {
+            Publication publication = gson.fromJson(payload, Publication.class);
+            System.out.println("[BROKER]PUBLICATION RECEIVED: " + responseTopic + " value: " + publication);
             List<String> destinations = new ArrayList<>();
             for (Map.Entry<String, List<Subscription>> entry : routingTable.entrySet()) {
                 for (Subscription subscription : entry.getValue()) {
@@ -68,10 +51,32 @@ public class PrepareBolt extends BaseRichBolt {
 
                     //IF MATCH => ADD TOPIC TO DESTINATIONS
                     destinations.add(entry.getKey());
+                    break;
                 }
             }
             for (String destinationTopic : destinations) {
-                this.outputCollector.emit(new Values(destinationTopic, currentTopic, value));
+                this.outputCollector.emit(new Values(destinationTopic, "pub-topic", payload));
+                System.out.println("[BROKER]PUBLICATION SENT: "+ currentTopic + " -> " + destinationTopic);
+            }
+        } else {
+            //SUBSCRIPTION RECEIVED FROM BROKER/SUB (WE TREAT THEM THE SAME)
+            Subscription subscription = gson.fromJson(payload, Subscription.class);
+            System.out.println("[BROKER]SUBSCRIPTION RECEIVED listening response on topic: " + responseTopic + " value: " + subscription);
+            //Add (subscriber/broker topic, message) to routing table
+            List<Subscription> existingSubs = routingTable.get(responseTopic);
+            if (existingSubs == null) {
+                existingSubs = new ArrayList<>();
+                routingTable.put(responseTopic, existingSubs);
+            }
+            existingSubs.add(subscription);
+            // Foreach neighbor broker emit tuple with the (key, message)
+            // key = source = current broker
+            List<String> neighborsBrokers = neighborsTopicList.get(currentTopic);
+            for (String neighborBrokerTopic : neighborsBrokers) {
+                if (!responseTopic.equals(neighborBrokerTopic)) {
+                    this.outputCollector.emit(new Values(neighborBrokerTopic, currentTopic, payload));
+                    System.out.println("[BROKER]SUBSCRIPTION SENT: " + currentTopic + " -> " + neighborBrokerTopic + " value: " + payload);
+                }
             }
         }
     }

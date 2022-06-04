@@ -48,7 +48,7 @@ public class KafkaSubscriber {
         Properties props = new Properties();
 
         props.put("bootstrap.servers", "localhost:9092");
-        props.put("group.id", "test-topics");
+        props.put("group.id", "topics");
         props.put("enable.auto.commit", "true");
         props.put("auto.commit.interval.ms", "1000");
         props.put("session.timeout.ms", "30000");

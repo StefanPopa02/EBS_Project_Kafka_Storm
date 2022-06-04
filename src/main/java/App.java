@@ -19,13 +19,14 @@ public class App {
     private static final String PREPARE_BOLT_ID = "prepare_bolt";
     private static final String ROUTE_BOLT_ID = "route_bolt";
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
         TopologyBuilder builder = new TopologyBuilder();
 
         PrepareBolt prepareBolt = new PrepareBolt();
         RouteBolt routeBolt = new RouteBolt();
 
         String topic = args[0];
+        System.out.println("INITIALIZED LISTENING TOPIC FOR BROKER: " + topic);
         String port = "9092";
 
         //KAFKA SPOUT
@@ -47,8 +48,8 @@ public class App {
                 .withTopicSelector(new MyKafkaTopicSelector())
                 .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper());
 
-        builder.setSpout(KAFKA_SPOUT_ID, new KafkaSpout<>(spoutConfig), 2);
-        builder.setBolt(PREPARE_BOLT_ID, prepareBolt, 2).setNumTasks(4).shuffleGrouping(KAFKA_SPOUT_ID);
+        builder.setSpout(KAFKA_SPOUT_ID, new KafkaSpout<>(spoutConfig));
+        builder.setBolt(PREPARE_BOLT_ID, prepareBolt).shuffleGrouping(KAFKA_SPOUT_ID);
 //        builder.setBolt(ROUTE_BOLT_ID, routeBolt).globalGrouping(PREPARE_BOLT_ID);
         builder.setBolt(KAFKA_BOLT_ID, kafkaBolt).shuffleGrouping(PREPARE_BOLT_ID);
 
