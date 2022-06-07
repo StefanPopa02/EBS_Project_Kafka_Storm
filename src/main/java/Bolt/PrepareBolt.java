@@ -12,9 +12,10 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class PrepareBolt extends BaseRichBolt {
+
+    private int matchCount;
     private OutputCollector outputCollector;
     private Gson gson;
 
@@ -23,6 +24,7 @@ public class PrepareBolt extends BaseRichBolt {
 
     @Override
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
+        matchCount = 0;
         this.outputCollector = outputCollector;
         this.gson = new Gson();
         routingTable = new HashMap<>();
@@ -40,34 +42,33 @@ public class PrepareBolt extends BaseRichBolt {
         String payload = tuple.getStringByField("value");
         String currentTopic = tuple.getStringByField("topic");
         if (responseTopic.startsWith("pub")) {
+            String[] keyComponents = responseTopic.split("-", 3);
+            String pubId = keyComponents[1];
+            String fromBrokerTopic = keyComponents[2];
             Publication publication = gson.fromJson(payload, Publication.class);
             System.out.println("[BROKER]PUBLICATION RECEIVED: " + responseTopic + " value: " + publication);
-            List<String> destinations = new ArrayList<>();
             for (Map.Entry<String, List<Subscription>> entry : routingTable.entrySet()) {
+                if (entry.getKey().equals(fromBrokerTopic)) {
+                    continue;
+                }
                 for (Subscription subscription : entry.getValue()) {
-                    //TODO: CHECK FOR MATCHING SUBSCRIPTIONS
                     //Not the best algo => if we have 2 equal subscriptions it will send the publication twice
                     //But in our case we don't have 2 equal subscriptions :)
-
-                    //IF MATCH => ADD TOPIC TO DESTINATIONS
-                    destinations.add(entry.getKey());
-                    break;
+                    if (isMatching(subscription, publication)) {
+                        matchCount++;
+                        this.outputCollector.emit(new Values(entry.getKey(), "pub-" + pubId + "-" + currentTopic, payload));
+                        System.out.println("[BROKER]PUBLICATION SENT: " + currentTopic + " -> " + entry.getKey());
+                        System.out.println("Matched: " + matchCount);
+                        break;
+                    }
                 }
-            }
-            for (String destinationTopic : destinations) {
-                this.outputCollector.emit(new Values(destinationTopic, "pub-topic", payload));
-                System.out.println("[BROKER]PUBLICATION SENT: "+ currentTopic + " -> " + destinationTopic);
             }
         } else {
             //SUBSCRIPTION RECEIVED FROM BROKER/SUB (WE TREAT THEM THE SAME)
             Subscription subscription = gson.fromJson(payload, Subscription.class);
             System.out.println("[BROKER]SUBSCRIPTION RECEIVED listening response on topic: " + responseTopic + " value: " + subscription);
             //Add (subscriber/broker topic, message) to routing table
-            List<Subscription> existingSubs = routingTable.get(responseTopic);
-            if (existingSubs == null) {
-                existingSubs = new ArrayList<>();
-                routingTable.put(responseTopic, existingSubs);
-            }
+            List<Subscription> existingSubs = routingTable.computeIfAbsent(responseTopic, k -> new ArrayList<>());
             existingSubs.add(subscription);
             // Foreach neighbor broker emit tuple with the (key, message)
             // key = source = current broker
@@ -79,6 +80,86 @@ public class PrepareBolt extends BaseRichBolt {
                 }
             }
         }
+
+        this.outputCollector.ack(tuple);
+    }
+
+    private boolean isMatching(Subscription subscription, Publication publication) {
+        Map<String, String> fieldOp = subscription.getFieldOperator();
+        return checkMultipleTypesMatch(subscription.getCompany(), publication.getCompany(), fieldOp.get("Company"))
+                && checkMultipleTypesMatch(subscription.getDate(), publication.getDate(), fieldOp.get("Date"))
+                && checkMultipleTypesMatch(subscription.getDrop(), publication.getDrop(), fieldOp.get("Drop"))
+                && checkMultipleTypesMatch(subscription.getValue(), publication.getValue(), fieldOp.get("Value"))
+                && checkMultipleTypesMatch(subscription.getVariation(), publication.getVariation(), fieldOp.get("Variation"));
+    }
+
+    private boolean checkMultipleTypesMatch(Double subDouble, Double pubDouble, String fieldOp) {
+        if (fieldOp == null) {
+            return true;
+        }
+
+        switch (fieldOp) {
+            case ">":
+                return pubDouble.compareTo(subDouble) > 0;
+            case "<":
+                return pubDouble.compareTo(subDouble) < 0;
+            case "=":
+                return pubDouble.compareTo(subDouble) == 0;
+            case ">=":
+                return pubDouble.compareTo(subDouble) > 0 || pubDouble.compareTo(subDouble) == 0;
+            case "<=":
+                return pubDouble.compareTo(subDouble) < 0 || pubDouble.compareTo(subDouble) == 0;
+            case "!=":
+                return pubDouble.compareTo(subDouble) != 0;
+        }
+
+        return false;
+    }
+
+    private boolean checkMultipleTypesMatch(Date subDate, Date pubDate, String fieldOp) {
+        if (fieldOp == null) {
+            return true;
+        }
+
+        switch (fieldOp) {
+            case ">":
+                return pubDate.compareTo(subDate) > 0;
+            case "<":
+                return pubDate.compareTo(subDate) < 0;
+            case "=":
+                return pubDate.compareTo(subDate) == 0;
+            case ">=":
+                return pubDate.compareTo(subDate) > 0 || pubDate.compareTo(subDate) == 0;
+            case "<=":
+                return pubDate.compareTo(subDate) < 0 || pubDate.compareTo(subDate) == 0;
+            case "!=":
+                return pubDate.compareTo(subDate) != 0;
+        }
+
+        return false;
+    }
+
+    private boolean checkMultipleTypesMatch(String subString, String pubString, String fieldOp) {
+        if (fieldOp == null) {
+            return true;
+        }
+
+        switch (fieldOp) {
+            case ">":
+                return subString.compareTo(pubString) > 0;
+            case "<":
+                return subString.compareTo(pubString) < 0;
+            case "=":
+                return subString.compareTo(pubString) == 0;
+            case ">=":
+                return subString.compareTo(pubString) > 0 || subString.compareTo(pubString) == 0;
+            case "<=":
+                return subString.compareTo(pubString) < 0 || subString.compareTo(pubString) == 0;
+            case "!=":
+                return subString.compareTo(pubString) != 0;
+        }
+
+        return false;
     }
 
     @Override

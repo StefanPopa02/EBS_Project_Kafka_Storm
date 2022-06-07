@@ -5,15 +5,13 @@ import org.apache.storm.LocalCluster;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
-import org.apache.storm.kafka.bolt.selector.DefaultTopicSelector;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.kafka.spout.KafkaSpoutConfig;
 import org.apache.storm.topology.TopologyBuilder;
-import org.apache.storm.tuple.Fields;
 
 import java.util.Properties;
 
-public class App {
+public class Broker {
     private static final String KAFKA_SPOUT_ID = "kafka_spout";
     private static final String KAFKA_BOLT_ID = "kafka_bolt";
     private static final String PREPARE_BOLT_ID = "prepare_bolt";
@@ -23,7 +21,6 @@ public class App {
         TopologyBuilder builder = new TopologyBuilder();
 
         PrepareBolt prepareBolt = new PrepareBolt();
-        RouteBolt routeBolt = new RouteBolt();
 
         String topic = args[0];
         System.out.println("INITIALIZED LISTENING TOPIC FOR BROKER: " + topic);
@@ -32,7 +29,7 @@ public class App {
         //KAFKA SPOUT
         KafkaSpoutConfig.Builder<String, String> spoutConfigBuilder = KafkaSpoutConfig.builder("localhost:" + port, topic);
         Properties prop = new Properties();
-        prop.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "topics");
+        prop.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "topic-brokers");// + "-" + UUID.randomUUID());
         spoutConfigBuilder.setProp(prop);
         KafkaSpoutConfig<String, String> spoutConfig = spoutConfigBuilder.build();
 
@@ -48,10 +45,9 @@ public class App {
                 .withTopicSelector(new MyKafkaTopicSelector())
                 .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper());
 
-        builder.setSpout(KAFKA_SPOUT_ID, new KafkaSpout<>(spoutConfig));
-        builder.setBolt(PREPARE_BOLT_ID, prepareBolt).shuffleGrouping(KAFKA_SPOUT_ID);
-//        builder.setBolt(ROUTE_BOLT_ID, routeBolt).globalGrouping(PREPARE_BOLT_ID);
-        builder.setBolt(KAFKA_BOLT_ID, kafkaBolt).shuffleGrouping(PREPARE_BOLT_ID);
+        builder.setSpout(KAFKA_SPOUT_ID, new KafkaSpout<>(spoutConfig), 4);
+        builder.setBolt(PREPARE_BOLT_ID, prepareBolt,4).setNumTasks(8).shuffleGrouping(KAFKA_SPOUT_ID);
+        builder.setBolt(KAFKA_BOLT_ID, kafkaBolt,4).setNumTasks(8).shuffleGrouping(PREPARE_BOLT_ID);
 
         Config config = new Config();
 

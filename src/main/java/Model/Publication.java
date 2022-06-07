@@ -1,35 +1,75 @@
 package Model;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
 public class Publication {
-    Map<String, String> publicationFields;
+    private String company;
+    private Double value;
+    private Date date;
+    private Double drop;
+    private Double variation;
 
-    public Publication(Map<String, String> publicationFields) {
-        this.publicationFields = publicationFields;
+    public String getCompany() {
+        return company;
+    }
+
+    public void setCompany(String company) {
+        this.company = company;
+    }
+
+    public Double getValue() {
+        return value;
+    }
+
+    public void setValue(Double value) {
+        this.value = value;
+    }
+
+    public Date getDate() {
+        return date;
+    }
+
+    public void setDate(Date date) {
+        this.date = date;
+    }
+
+    public Double getDrop() {
+        return drop;
+    }
+
+    public void setDrop(Double drop) {
+        this.drop = drop;
+    }
+
+    public Double getVariation() {
+        return variation;
+    }
+
+    public void setVariation(Double variation) {
+        this.variation = variation;
     }
 
     public Publication() {
-        publicationFields = new HashMap<>();
     }
 
-    public Map<String, String> getPublicationFields() {
-        return publicationFields;
-    }
-
-    public void setPublicationFields(Map<String, String> publicationFields) {
-        this.publicationFields = publicationFields;
-    }
-
-    public void addPublicationField(String key, String value){
-        publicationFields.put(key, value);
+    public Publication(String company, Double value, Date date, Double drop, Double variation) {
+        this.company = company;
+        this.value = value;
+        this.date = date;
+        this.drop = drop;
+        this.variation = variation;
     }
 
     @Override
     public String toString() {
         return "Publication{" +
-                "publicationFields=" + publicationFields +
+                "company='" + company + '\'' +
+                ", value=" + value +
+                ", date=" + date +
+                ", drop=" + drop +
+                ", variation=" + variation +
                 '}';
     }
 }

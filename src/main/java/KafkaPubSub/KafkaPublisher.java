@@ -1,17 +1,26 @@
 package KafkaPubSub;
 
+import Deserializer.MyPublicationListDeserializer;
 import Model.Publication;
-import com.google.gson.Gson;
+import com.google.gson.*;
+import com.google.gson.reflect.TypeToken;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.KafkaException;
+import org.apache.kafka.common.errors.AuthorizationException;
+import org.apache.kafka.common.errors.OutOfOrderSequenceException;
+import org.apache.kafka.common.errors.ProducerFencedException;
+import org.apache.kafka.common.serialization.StringSerializer;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
+import java.io.*;
+import java.lang.reflect.Type;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 public class KafkaPublisher {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException, ParseException {
 
         // Check arguments length value
         if (args.length == 0) {
@@ -32,7 +41,7 @@ public class KafkaPublisher {
         props.put("acks", "all");
 
         //If the request fails, the producer can automatically retry,
-        props.put("retries", 0);
+        props.put("retries", 1);
 
         //Specify buffer size in config
         props.put("batch.size", 16384);
@@ -43,6 +52,10 @@ public class KafkaPublisher {
         //The buffer.memory controls the total amount of memory available to the producer for buffering.
         props.put("buffer.memory", 33554432);
 
+//        props.put("enable.idempotence", "true");
+
+//        props.put("transactional.id", "my-transactional-id");
+
         props.put("key.serializer",
                 "org.apache.kafka.common.serialization.StringSerializer");
 
@@ -51,25 +64,58 @@ public class KafkaPublisher {
 
         Producer<String, String> producer = new KafkaProducer<>(props);
 
-        List<Publication> publications = new ArrayList<>();
-        Publication publication1 = new Publication();
-        publication1.addPublicationField("COMPANY", "GOOGLE");
-        publication1.addPublicationField("VALUE", "10");
+        List<Publication> publications = loadAllPublications("publications.txt");
 
-        Publication publication2 = new Publication();
-        publication2.addPublicationField("COMPANY", "APPLE");
-        publication2.addPublicationField("VALUE", "7");
-
-        publications.add(publication1);
-        publications.add(publication2);
+        //FOR TESTING
+//        List<Publication> publications = new ArrayList<>();
+//        publications.add(new Publication("Google", 10.0, new SimpleDateFormat("yyyy-MM-dd").parse("2022-06-05"), 1.39, 0.38));
+//        publications.add(new Publication("Apple", 13.0, new SimpleDateFormat("yyyy-MM-dd").parse("2020-06-05"), 3.5, 0.38));
+//        publications.add(new Publication("Facebook", 7.3, new SimpleDateFormat("yyyy-MM-dd").parse("2021-06-05"), 3.7, -0.38));
+//        publications.add(new Publication("Amazon", 9.0, new SimpleDateFormat("yyyy-MM-dd").parse("2019-06-05"), 2.7, 0.9));
 
         Gson gson = new Gson();
-        for (Publication tmpPublication : publications) {
-            String publicationJson = gson.toJson(tmpPublication);
-            producer.send(new ProducerRecord<>(topicName,
-                    "pub-topic", publicationJson));
-            System.out.println("Publication sent successfully: " + publicationJson);
+        int pubId = 0;
+        int i = 0;
+        int pubsSize = publications.size();
+        long end = System.currentTimeMillis() + 60000 * 5; //5 min
+        try{
+            while (true) {
+                Publication tmpPublication = publications.get(i);
+                String publicationJson = gson.toJson(tmpPublication);
+                producer.send(new ProducerRecord<>(topicName,
+                        "pub-" + pubId + "-topic", publicationJson));
+                pubId++;
+                if(pubId % 1000 == 0){
+                    producer.flush();
+                }
+                i = ++i % pubsSize;
+//                System.out.println("Publication sent successfully: " + publicationJson);
+            }
+        }catch (ProducerFencedException | OutOfOrderSequenceException | AuthorizationException e) {
+            // We can't recover from these exceptions, so our only option is to close the producer and exit.
+            producer.close();
+        } catch (KafkaException e) {
+            // For all other exceptions, just abort the transaction and try again.
+            producer.abortTransaction();
         }
+
         producer.close();
+    }
+
+    private static List<Publication> loadAllPublications(String filename) throws IOException {
+        File file = new File(filename);
+        BufferedReader br = new BufferedReader(new FileReader(file));
+        StringBuilder pubsJson = new StringBuilder();
+        String line;
+        while ((line = br.readLine()) != null) {
+            pubsJson.append(line);
+        }
+        Type collectionType = new TypeToken<List<Publication>>() {
+        }.getType();
+        Gson gson = new GsonBuilder()
+                .registerTypeAdapter(collectionType, new MyPublicationListDeserializer())
+                .create();
+        List<Publication> publications = gson.fromJson(pubsJson.toString(), collectionType);
+        return publications;
     }
 }

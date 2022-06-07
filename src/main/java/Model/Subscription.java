@@ -1,35 +1,89 @@
 package Model;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class Subscription {
-    List<SubscriptionEntry> subscriptionConstraints;
+    private String company;
+    private Double value;
+    private Date date;
+    private Double drop;
+    private Double variation;
+    private Map<String, String> fieldOperator;
 
     public Subscription() {
-        subscriptionConstraints = new ArrayList<>();
+        fieldOperator = new HashMap<>();
     }
 
-    public Subscription(List<SubscriptionEntry> subscriptionConstraints) {
-        this.subscriptionConstraints = subscriptionConstraints;
+    public Subscription(String company, Double value, Date date, Double drop, Double variation, Map<String, String> fieldOperator) {
+        this.company = company;
+        this.value = value;
+        this.date = date;
+        this.drop = drop;
+        this.variation = variation;
+        this.fieldOperator = fieldOperator;
     }
 
-    public List<SubscriptionEntry> getSubscriptionConstraints() {
-        return subscriptionConstraints;
+    public void addFieldOp(String field, String operator){
+        fieldOperator.put(field, operator);
     }
 
-    public void setSubscriptionConstraints(List<SubscriptionEntry> subscriptionConstraints) {
-        this.subscriptionConstraints = subscriptionConstraints;
+    public String getCompany() {
+        return company;
     }
 
-    public void addSubscriptionEntry(SubscriptionEntry subscriptionEntry){
-        subscriptionConstraints.add(subscriptionEntry);
+    public void setCompany(String company) {
+        this.company = company;
+    }
+
+    public Double getValue() {
+        return value;
+    }
+
+    public void setValue(Double value) {
+        this.value = value;
+    }
+
+    public Date getDate() {
+        return date;
+    }
+
+    public void setDate(Date date) {
+        this.date = date;
+    }
+
+    public Double getDrop() {
+        return drop;
+    }
+
+    public void setDrop(Double drop) {
+        this.drop = drop;
+    }
+
+    public Double getVariation() {
+        return variation;
+    }
+
+    public void setVariation(Double variation) {
+        this.variation = variation;
+    }
+
+    public Map<String, String> getFieldOperator() {
+        return fieldOperator;
+    }
+
+    public void setFieldOperator(Map<String, String> fieldOperator) {
+        this.fieldOperator = fieldOperator;
     }
 
     @Override
     public String toString() {
         return "Subscription{" +
-                "subscriptionConstraints=" + subscriptionConstraints +
+                "company='" + company + '\'' +
+                ", value=" + value +
+                ", date=" + date +
+                ", drop=" + drop +
+                ", variation=" + variation +
+                ", fieldOperator=" + fieldOperator +
                 '}';
     }
 }
