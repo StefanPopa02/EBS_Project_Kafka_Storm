@@ -117,8 +117,8 @@ public class KafkaSubscriber {
                 pubsReceived++;
                 long elapsedTime = System.currentTimeMillis() - record.timestamp();
                 totalTime += elapsedTime;
-//                System.out.printf("NEW PUBLICATION RECEIVED: offset = %d, key = %s, value = %s\n",
-//                        record.offset(), record.key(), record.value());
+                System.out.printf("NEW PUBLICATION RECEIVED: offset = %d, key = %s, value = %s\n",
+                        record.offset(), record.key(), record.value());
             }
         }
         meanTime = totalTime / (double) pubsReceived;

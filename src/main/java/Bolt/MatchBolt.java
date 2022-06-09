@@ -2,6 +2,7 @@ package Bolt;
 
 import Model.Publication;
 import Model.Subscription;
+import Utils.BrokerInfo;
 import com.google.gson.Gson;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
@@ -11,6 +12,10 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -26,11 +31,12 @@ public class MatchBolt extends BaseRichBolt {
 
     @Override
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
-//        directTasks = topologyContext.getComponentTasks("persistent_bolt");
+        directTasks = topologyContext.getComponentTasks("persistent_bolt");
         matchCount = 0;
         this.outputCollector = outputCollector;
         this.gson = new Gson();
         routingTable = new HashMap<>();
+        loadSubsFromFile(BrokerInfo.BROKER_TOPIC_ID);
         neighborsTopicList = new HashMap<>();
         neighborsTopicList.put("broker-topic-1", new ArrayList<>(Arrays.asList("broker-topic-2")));
         neighborsTopicList.put("broker-topic-2", new ArrayList<>(Arrays.asList("broker-topic-1")));
@@ -73,8 +79,8 @@ public class MatchBolt extends BaseRichBolt {
             //Add (subscriber/broker topic, message) to routing table
             List<Subscription> existingSubs = routingTable.computeIfAbsent(responseTopic, k -> new ArrayList<>());
             existingSubs.add(subscription);
-//            int randomTaskNum = ThreadLocalRandom.current().nextInt(0, directTasks.size());
-//            this.outputCollector.emitDirect(directTasks.get(randomTaskNum), "persist", new Values(responseTopic, payload));
+            int randomTaskNum = ThreadLocalRandom.current().nextInt(0, directTasks.size());
+            this.outputCollector.emitDirect(directTasks.get(randomTaskNum), "persist", new Values(responseTopic, payload));
             // Foreach neighbor broker emit tuple with the (key, message)
             // key = source = current broker
             List<String> neighborsBrokers = neighborsTopicList.get(currentTopic);
@@ -87,6 +93,40 @@ public class MatchBolt extends BaseRichBolt {
         }
 
         this.outputCollector.ack(tuple);
+    }
+
+    public void loadSubsFromFile(String brokerTopic) {
+        File folder = new File("persistData/" + brokerTopic);
+        File[] listOfFiles = folder.listFiles();
+
+        List<String> savedSubs = new ArrayList<>();
+        for (File file : listOfFiles) {
+            if (file.isFile()) {
+                savedSubs.add(file.getName());
+            }
+        }
+
+        BufferedReader reader;
+        for (String fileName : savedSubs) {
+            try {
+                List<Subscription> subscriptionList = new ArrayList<>();
+                reader = new BufferedReader(new FileReader(
+                        "persistData/" + brokerTopic + "/" + fileName));
+                String subscriptionJson = "";
+                do {
+                    subscriptionJson = reader.readLine();
+                    if (subscriptionJson != null) {
+                        Subscription subscription = gson.fromJson(subscriptionJson, Subscription.class);
+                        subscriptionList.add(subscription);
+                    }
+                } while (subscriptionJson != null);
+                reader.close();
+                routingTable.put(fileName, subscriptionList);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
     }
 
     private boolean isMatching(Subscription subscription, Publication publication) {
@@ -171,6 +211,6 @@ public class MatchBolt extends BaseRichBolt {
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
         outputFieldsDeclarer.declare(new Fields("destination-topic", "key", "message"));
 
-//        outputFieldsDeclarer.declareStream("persist", true, new Fields("source", "subscription"));
+        outputFieldsDeclarer.declareStream("persist", true, new Fields("source", "subscription"));
     }
 }
