@@ -20,7 +20,7 @@ public class Broker {
     public static void main(String[] args) {
         TopologyBuilder builder = new TopologyBuilder();
 
-        PrepareBolt prepareBolt = new PrepareBolt();
+        MatchBolt matchBolt = new MatchBolt();
 
         String topic = args[0];
         System.out.println("INITIALIZED LISTENING TOPIC FOR BROKER: " + topic);
@@ -46,7 +46,7 @@ public class Broker {
                 .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper());
 
         builder.setSpout(KAFKA_SPOUT_ID, new KafkaSpout<>(spoutConfig), 4);
-        builder.setBolt(PREPARE_BOLT_ID, prepareBolt,4).setNumTasks(8).shuffleGrouping(KAFKA_SPOUT_ID);
+        builder.setBolt(PREPARE_BOLT_ID, matchBolt,4).setNumTasks(8).shuffleGrouping(KAFKA_SPOUT_ID);
         builder.setBolt(KAFKA_BOLT_ID, kafkaBolt,4).setNumTasks(8).shuffleGrouping(PREPARE_BOLT_ID);
 
         Config config = new Config();

@@ -13,7 +13,7 @@ import org.apache.storm.tuple.Values;
 
 import java.util.*;
 
-public class PrepareBolt extends BaseRichBolt {
+public class MatchBolt extends BaseRichBolt {
 
     private int matchCount;
     private OutputCollector outputCollector;
@@ -46,7 +46,7 @@ public class PrepareBolt extends BaseRichBolt {
             String pubId = keyComponents[1];
             String fromBrokerTopic = keyComponents[2];
             Publication publication = gson.fromJson(payload, Publication.class);
-            System.out.println("[BROKER]PUBLICATION RECEIVED: " + responseTopic + " value: " + publication);
+//            System.out.println("[BROKER]PUBLICATION RECEIVED: " + responseTopic + " value: " + publication);
             for (Map.Entry<String, List<Subscription>> entry : routingTable.entrySet()) {
                 if (entry.getKey().equals(fromBrokerTopic)) {
                     continue;
@@ -57,8 +57,8 @@ public class PrepareBolt extends BaseRichBolt {
                     if (isMatching(subscription, publication)) {
                         matchCount++;
                         this.outputCollector.emit(new Values(entry.getKey(), "pub-" + pubId + "-" + currentTopic, payload));
-                        System.out.println("[BROKER]PUBLICATION SENT: " + currentTopic + " -> " + entry.getKey());
-                        System.out.println("Matched: " + matchCount);
+//                        System.out.println("[BROKER]PUBLICATION SENT: " + currentTopic + " -> " + entry.getKey());
+//                        System.out.println("Matched: " + matchCount);
                         break;
                     }
                 }
@@ -66,7 +66,7 @@ public class PrepareBolt extends BaseRichBolt {
         } else {
             //SUBSCRIPTION RECEIVED FROM BROKER/SUB (WE TREAT THEM THE SAME)
             Subscription subscription = gson.fromJson(payload, Subscription.class);
-            System.out.println("[BROKER]SUBSCRIPTION RECEIVED listening response on topic: " + responseTopic + " value: " + subscription);
+//            System.out.println("[BROKER]SUBSCRIPTION RECEIVED listening response on topic: " + responseTopic + " value: " + subscription);
             //Add (subscriber/broker topic, message) to routing table
             List<Subscription> existingSubs = routingTable.computeIfAbsent(responseTopic, k -> new ArrayList<>());
             existingSubs.add(subscription);
@@ -76,7 +76,7 @@ public class PrepareBolt extends BaseRichBolt {
             for (String neighborBrokerTopic : neighborsBrokers) {
                 if (!responseTopic.equals(neighborBrokerTopic)) {
                     this.outputCollector.emit(new Values(neighborBrokerTopic, currentTopic, payload));
-                    System.out.println("[BROKER]SUBSCRIPTION SENT: " + currentTopic + " -> " + neighborBrokerTopic + " value: " + payload);
+//                    System.out.println("[BROKER]SUBSCRIPTION SENT: " + currentTopic + " -> " + neighborBrokerTopic + " value: " + payload);
                 }
             }
         }
