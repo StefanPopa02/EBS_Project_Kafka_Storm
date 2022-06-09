@@ -77,29 +77,29 @@ public class KafkaPublisher {
         int pubId = 0;
         int i = 0;
         int pubsSize = publications.size();
-        long end = System.currentTimeMillis() + 60000 * 5; //5 min
-        try{
-            while (true) {
+        long end = System.currentTimeMillis() + 60000 * 3; //3 min
+        try {
+            while (System.currentTimeMillis() < end) {
                 Publication tmpPublication = publications.get(i);
                 String publicationJson = gson.toJson(tmpPublication);
                 producer.send(new ProducerRecord<>(topicName,
                         "pub-" + pubId + "-topic", publicationJson));
                 pubId++;
-                if(pubId % 1000 == 0){
+                if (pubId % 1000 == 0) {
                     producer.flush();
                 }
                 i = ++i % pubsSize;
 //                System.out.println("Publication sent successfully: " + publicationJson);
             }
-        }catch (ProducerFencedException | OutOfOrderSequenceException | AuthorizationException e) {
+        } catch (ProducerFencedException | OutOfOrderSequenceException | AuthorizationException e) {
             // We can't recover from these exceptions, so our only option is to close the producer and exit.
             producer.close();
         } catch (KafkaException e) {
             // For all other exceptions, just abort the transaction and try again.
             producer.abortTransaction();
         }
-
         producer.close();
+        System.out.println("PUBLICATII TRIMISE: " + pubId);
     }
 
     private static List<Publication> loadAllPublications(String filename) throws IOException {

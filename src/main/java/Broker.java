@@ -15,12 +15,13 @@ public class Broker {
     private static final String KAFKA_SPOUT_ID = "kafka_spout";
     private static final String KAFKA_BOLT_ID = "kafka_bolt";
     private static final String PREPARE_BOLT_ID = "prepare_bolt";
-    private static final String ROUTE_BOLT_ID = "route_bolt";
+    private static final String PERSISTENT_BOLT_ID = "persistent_bolt";
 
     public static void main(String[] args) {
         TopologyBuilder builder = new TopologyBuilder();
 
         MatchBolt matchBolt = new MatchBolt();
+        PersistentBolt persistentBolt = new PersistentBolt();
 
         String topic = args[0];
         System.out.println("INITIALIZED LISTENING TOPIC FOR BROKER: " + topic);
@@ -46,8 +47,9 @@ public class Broker {
                 .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper());
 
         builder.setSpout(KAFKA_SPOUT_ID, new KafkaSpout<>(spoutConfig), 4);
-        builder.setBolt(PREPARE_BOLT_ID, matchBolt,4).setNumTasks(8).shuffleGrouping(KAFKA_SPOUT_ID);
-        builder.setBolt(KAFKA_BOLT_ID, kafkaBolt,4).setNumTasks(8).shuffleGrouping(PREPARE_BOLT_ID);
+        builder.setBolt(PREPARE_BOLT_ID, matchBolt, 4).setNumTasks(8).shuffleGrouping(KAFKA_SPOUT_ID);
+//        builder.setBolt(PERSISTENT_BOLT_ID, persistentBolt, 4).setNumTasks(8).directGrouping(PREPARE_BOLT_ID, "persist");
+        builder.setBolt(KAFKA_BOLT_ID, kafkaBolt, 4).setNumTasks(8).shuffleGrouping(PREPARE_BOLT_ID);
 
         Config config = new Config();
 

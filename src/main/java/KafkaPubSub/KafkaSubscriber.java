@@ -30,7 +30,7 @@ public class KafkaSubscriber {
 
         String brokerTopic = args[0];
         String topicToListen = "sub-topic-" + UUID.randomUUID();
-        List<Subscription> subscriptions = loadAllSubscriptions("subscriptions.txt");
+        List<Subscription> subscriptions = loadAllSubscriptions("subscriptions_random.txt");
 
 //        //FOR TESTING
         //1 MATCH

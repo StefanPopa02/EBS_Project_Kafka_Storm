@@ -12,6 +12,7 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class MatchBolt extends BaseRichBolt {
 
@@ -21,9 +22,11 @@ public class MatchBolt extends BaseRichBolt {
 
     private Map<String, List<Subscription>> routingTable;
     private Map<String, List<String>> neighborsTopicList;
+    private List<Integer> directTasks;
 
     @Override
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
+//        directTasks = topologyContext.getComponentTasks("persistent_bolt");
         matchCount = 0;
         this.outputCollector = outputCollector;
         this.gson = new Gson();
@@ -70,6 +73,8 @@ public class MatchBolt extends BaseRichBolt {
             //Add (subscriber/broker topic, message) to routing table
             List<Subscription> existingSubs = routingTable.computeIfAbsent(responseTopic, k -> new ArrayList<>());
             existingSubs.add(subscription);
+//            int randomTaskNum = ThreadLocalRandom.current().nextInt(0, directTasks.size());
+//            this.outputCollector.emitDirect(directTasks.get(randomTaskNum), "persist", new Values(responseTopic, payload));
             // Foreach neighbor broker emit tuple with the (key, message)
             // key = source = current broker
             List<String> neighborsBrokers = neighborsTopicList.get(currentTopic);
@@ -165,5 +170,7 @@ public class MatchBolt extends BaseRichBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
         outputFieldsDeclarer.declare(new Fields("destination-topic", "key", "message"));
+
+//        outputFieldsDeclarer.declareStream("persist", true, new Fields("source", "subscription"));
     }
 }

@@ -20,7 +20,7 @@ public class MyPublicationListDeserializer implements JsonDeserializer {
             Publication tmpPublication = new Publication();
             for (int j = 0; j < pubArr.size(); j++) {
                 String field = ((JsonArray) pubArr.get(j)).get(0).getAsString();
-                switch(field){
+                switch (field) {
                     case "Company":
                         String valueCompany = ((JsonArray) pubArr.get(j)).get(1).getAsString();
                         tmpPublication.setCompany(valueCompany);
