@@ -1,4 +1,4 @@
-package Utils;
+package Util;
 
 public class BrokerInfo {
     public static String BROKER_TOPIC_ID = "";

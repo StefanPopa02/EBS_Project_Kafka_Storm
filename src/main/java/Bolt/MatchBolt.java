@@ -2,7 +2,7 @@ package Bolt;
 
 import Model.Publication;
 import Model.Subscription;
-import Utils.BrokerInfo;
+import Util.BrokerInfo;
 import com.google.gson.Gson;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;

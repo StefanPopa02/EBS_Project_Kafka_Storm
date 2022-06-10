@@ -1,0 +1,9 @@
+syntax = "proto3";
+import "google/protobuf/timestamp.proto";
+message PublicationProto {
+  string company = 1;
+  double value = 2;
+  google.protobuf.Timestamp date = 3;
+  double drop = 4;
+  double variation = 5;
+}

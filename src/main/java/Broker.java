@@ -1,6 +1,10 @@
 import Bolt.*;
-import Utils.BrokerInfo;
+import Proto.PublicationProtoOuterClass;
+import Util.BrokerInfo;
+import io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.storm.Config;
 import org.apache.storm.LocalCluster;
 import org.apache.storm.generated.StormTopology;
@@ -30,11 +34,14 @@ public class Broker {
         String port = "9092";
 
         //KAFKA SPOUT
-        KafkaSpoutConfig.Builder<String, String> spoutConfigBuilder = KafkaSpoutConfig.builder("localhost:" + port, topic);
+        KafkaSpoutConfig.Builder<String, PublicationProtoOuterClass.PublicationProto> kafkaSpoutConfig = new KafkaSpoutConfig.Builder<String, PublicationProtoOuterClass.PublicationProto>("localhost:" + port, topic);
         Properties prop = new Properties();
         prop.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "topic-brokers");// + "-" + UUID.randomUUID());
-        spoutConfigBuilder.setProp(prop);
-        KafkaSpoutConfig<String, String> spoutConfig = spoutConfigBuilder.build();
+        prop.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
+        prop.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializer");
+        prop.setProperty("schema.registry.url", "http://localhost:8081");
+        kafkaSpoutConfig.setProp(prop);
+        KafkaSpoutConfig<String, PublicationProtoOuterClass.PublicationProto> spoutConfig = kafkaSpoutConfig.build();
 
         //KAFKA BOLT
         Properties props = new Properties();

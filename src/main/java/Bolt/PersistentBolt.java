@@ -1,9 +1,7 @@
 package Bolt;
 
 import Database.DatabaseService;
-import Database.MyMongoClient;
-import Model.Subscription;
-import Utils.BrokerInfo;
+import Util.BrokerInfo;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
